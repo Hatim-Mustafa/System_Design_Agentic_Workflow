@@ -1,0 +1,6 @@
+typing
+pydantic
+langgraph
+langchain
+python-dotenv
+langchain-openai
