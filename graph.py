@@ -4,7 +4,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import StateGraph
 from langgraph.constants import START, END
 
-from agents import intake_node, _is_requirements_complete
+from agents import intake_node, prd_node, _is_requirements_complete
 from models import DesignState
 
 
@@ -21,6 +21,7 @@ def build_graph() -> StateGraph:
     
     # Add the intake node
     graph.add_node("intake", intake_node)
+    graph.add_node("prd", prd_node)
     
     graph.add_edge(START, "intake")  # Start to intake
     
@@ -30,9 +31,11 @@ def build_graph() -> StateGraph:
         _intake_router,
         {
             "continue": "intake",
-            "done": END,
+            "done": "prd",
         },
     )
+
+    graph.add_edge("prd", END)
     
     return graph.compile(checkpointer=InMemorySaver())
 

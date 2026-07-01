@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-import argparse
 import asyncio
 import json
+import pickle
 from typing import Any
 
 from langgraph.types import Command
 
 from graph import get_graph
 from models import DesignState
+
+STATE_SNAPSHOT_PATH = "design_state_snapshot.bin"
 
 
 def build_initial_state(raw_idea: str) -> DesignState:
@@ -26,6 +28,17 @@ def build_initial_state(raw_idea: str) -> DesignState:
         "max_revisions": 3,
         "documents_finalized": False,
     }
+
+
+def save_state_snapshot(state: dict[str, Any], snapshot_path: str = STATE_SNAPSHOT_PATH) -> None:
+    with open(snapshot_path, "wb") as snapshot_file:
+        pickle.dump(state, snapshot_file)
+
+
+def _serialize_value(value: Any) -> Any:
+    if hasattr(value, "model_dump"):
+        return value.model_dump()
+    return value
 
 
 async def run_workflow_with_interrupts(raw_idea: str) -> dict[str, Any]:
@@ -68,13 +81,21 @@ def main() -> None:
 
     try:
         final_state = asyncio.run(run_workflow_with_interrupts(raw_idea))
+        save_state_snapshot(final_state)
 
-        if final_state.get("clarified_requirements"):
-            print("\n✓ Intake complete! Here's what I understood:")
-            clarified_requirements = final_state["clarified_requirements"]
-            if hasattr(clarified_requirements, "model_dump"):
-                clarified_requirements = clarified_requirements.model_dump()
-            print(json.dumps(clarified_requirements, indent=2))
+        clarified_requirements = final_state.get("clarified_requirements")
+        prd = final_state.get("prd")
+
+        if clarified_requirements or prd:
+            print("\n✓ Workflow complete! Here's what was produced:")
+
+            if clarified_requirements:
+                print("\nClarified requirements:")
+                print(json.dumps(_serialize_value(clarified_requirements), indent=2))
+
+            if prd:
+                print("\nPRD:")
+                print(json.dumps(_serialize_value(prd), indent=2))
         else:
             print("\nWorkflow ended without complete requirements. Check the output above.")
 

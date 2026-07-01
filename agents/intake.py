@@ -156,7 +156,6 @@ async def run_intake_agent(state: DesignState) -> dict[str, Any]:
     if _is_requirements_complete(clarified_requirements):
         return {
             "clarifying_questions": questions,
-            "intake_messages": new_messages,
             "clarified_requirements": clarified_requirements.model_dump(),
         }
     return {
