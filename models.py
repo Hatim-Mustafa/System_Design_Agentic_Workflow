@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field
-from langgraph.graph import TypedDict
+from typing import TypedDict
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 from typing import Annotated
@@ -32,6 +32,12 @@ class ClarifiedRequirements(BaseModel):
     )
     assumptions: list[str] = Field(
         description="Assumptions made about the environment, users, or system that have not been explicitly confirmed."
+    )
+
+
+class ClarifyingQuestions(BaseModel):
+    questions: list[str] = Field(
+        description="A batch of short, non-technical clarifying questions to ask the user, ordered from most important to least important."
     )
 
 
@@ -384,6 +390,7 @@ class Critique(BaseModel):
 class DesignState(TypedDict):
     raw_idea: str
     intake_messages: Annotated[list[BaseMessage], add_messages]
+    clarifying_questions: list[str]
     clarified_requirements: Optional[ClarifiedRequirements]
     prd: Optional[PRD]
     acceptance_criteria: Optional[AcceptanceCriteria]
