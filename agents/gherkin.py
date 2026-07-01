@@ -2,8 +2,64 @@ from __future__ import annotations
 
 from typing import Any
 
-from models import DesignState
+from langchain_core.messages import HumanMessage, SystemMessage
+
+from models import DesignState, AcceptanceCriteria
+from .helpers import (
+    _coerce_clarified_requirements,
+    _coerce_prd,
+    format_clarified_requirements,
+    format_prd,
+    _coerce_gherkin,
+    format_gherkin
+)
+from .prompts import GHERKIN_SYSTEM_PROMPT
+
+from .llm import get_chat_model
 
 
-def gherkin_node(state: DesignState) -> dict[str, Any]:
-    raise NotImplementedError("Gherkin agent is not implemented yet.")
+def _build_gherkin_messages(state: DesignState) -> list[SystemMessage | HumanMessage]:
+    clarified_requirements = _coerce_clarified_requirements(state.get("clarified_requirements"))
+    prd = _coerce_prd(state.get("prd"))
+    existing_gherkin = _coerce_gherkin(state.get("acceptance_criteria"))
+
+    if clarified_requirements is None:
+        raise ValueError("clarified_requirements is required before generating Gherkin scenarios.")
+    if prd is None:
+        raise ValueError("prd is required before generating Gherkin scenarios.")
+
+    mode = "revise" if existing_gherkin is not None else "create"
+
+    messages: list[SystemMessage | HumanMessage] = [SystemMessage(content=GHERKIN_SYSTEM_PROMPT)]
+    messages.append(
+        HumanMessage(
+            content=(
+                f"Mode: {mode}\n\n"
+                f"Clarified requirements:\n{format_clarified_requirements(clarified_requirements)}\n\n"
+                f"PRD:\n{format_prd(prd)}"
+            )
+        )
+    )
+
+    if existing_gherkin is not None:
+        messages.append(
+            HumanMessage(
+                content=(
+                    "Existing Gherkin scenarios to revise:\n"
+                    f"{format_gherkin(existing_gherkin)}"
+                )
+            )
+        )
+
+    return messages
+
+
+async def run_gherkin_agent(state: DesignState) -> dict[str, Any]:
+    model = get_chat_model().with_structured_output(AcceptanceCriteria)
+    messages = _build_gherkin_messages(state)
+    gherkin = await model.ainvoke(messages)
+    return {"acceptance_criteria": gherkin.model_dump()}
+
+
+async def gherkin_node(state: DesignState) -> dict[str, Any]:
+    return await run_gherkin_agent(state)

@@ -7,7 +7,7 @@ import pickle
 from pathlib import Path
 from typing import Any
 
-from agents import intake_node, prd_node
+from agents import intake_node, prd_node, openapi_node, er_node
 from main import build_initial_state
 from models import DesignState
 
@@ -37,9 +37,17 @@ def normalize_state_for_agent(agent_name: str, snapshot_state: dict[str, Any]) -
     state.update(snapshot_state)
 
     if agent_name == "prd":
-        state["prd"] = None
         if state.get("clarified_requirements") is None:
             raise SystemExit("PRD testing requires clarified_requirements in the saved state snapshot.")
+        state["prd"] = None
+    elif agent_name == "openapi":
+        if state.get("clarified_requirements") is None or state.get("prd") is None:
+            raise SystemExit("OpenAPI testing requires clarified_requirements and prd in the saved state snapshot.")
+        state["openapi_schema"] = None
+    elif agent_name == "er":
+        if state.get("clarified_requirements") is None or state.get("prd") is None or state.get("openapi_schema") is None:
+            raise SystemExit("ER testing requires clarified_requirements, prd, and openapi_schema in the saved state snapshot.")
+        state["er_schema"] = None
 
     return state
 
@@ -49,6 +57,10 @@ async def run_selected_agent(agent_name: str, state: DesignState) -> dict[str, A
         return await intake_node(state)
     if agent_name == "prd":
         return await prd_node(state)
+    if agent_name == "openapi":
+        return await openapi_node(state)
+    if agent_name == "er":
+        return await er_node(state)
     raise SystemExit(f"Unsupported agent: {agent_name}")
 
 
@@ -56,7 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run a single agent against the saved DesignState snapshot.")
     parser.add_argument(
         "agent",
-        choices=["intake", "prd"],
+        choices=["intake", "prd", "openapi", "er"],
         help="Which agent to run from the saved state snapshot.",
     )
     return parser.parse_args()

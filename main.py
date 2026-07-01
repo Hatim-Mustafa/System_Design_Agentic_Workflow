@@ -85,8 +85,10 @@ def main() -> None:
 
         clarified_requirements = final_state.get("clarified_requirements")
         prd = final_state.get("prd")
+        openapi_schema = final_state.get("openapi_schema")
+        er_schema = final_state.get("er_schema")
 
-        if clarified_requirements or prd:
+        if clarified_requirements or prd or openapi_schema or er_schema:
             print("\n✓ Workflow complete! Here's what was produced:")
 
             if clarified_requirements:
@@ -96,6 +98,14 @@ def main() -> None:
             if prd:
                 print("\nPRD:")
                 print(json.dumps(_serialize_value(prd), indent=2))
+
+            if openapi_schema:
+                print("\nOpenAPI schema:")
+                print(json.dumps(_serialize_value(openapi_schema), indent=2))
+
+            if er_schema:
+                print("\nER schema:")
+                print(json.dumps(_serialize_value(er_schema), indent=2))
         else:
             print("\nWorkflow ended without complete requirements. Check the output above.")
 
